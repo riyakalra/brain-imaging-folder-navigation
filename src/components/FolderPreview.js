@@ -6,6 +6,7 @@ const FolderPreview = ({ folderKey }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        console.log(folderKey)
         const fetchFolderPreview = async () => {
             const data = await getFolderPreview(folderKey);
             setFolderData(data);
@@ -26,7 +27,7 @@ const FolderPreview = ({ folderKey }) => {
     const { lastModified, nextContinuationToken, totalFiles, totalSize } = folderData;
 
     return (
-        <div className="p-4">
+        <div className="p-4 mt-4 bg-white shadow-lg rounded-lg">
             <h2 className="text-xl font-bold mb-4">Folder Details Preview</h2>
             <p><strong>Last Modified:</strong> {new Date(lastModified).toLocaleString()}</p>
             <p><strong>Total Files:</strong> {totalFiles}</p>
