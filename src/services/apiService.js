@@ -9,7 +9,7 @@ export const getFileList = async (prefix, pageToken = '') => {
 
 export const getFolderPreview = async (key, pageToken = '') => {
     const response = await axios.get(`${API_BASE_URL}/folder/preview`, { params: { key, pageToken } });
-    return response.data.data;
+    return response.data;
 };
 
 export const downloadFile = async (key) => {
