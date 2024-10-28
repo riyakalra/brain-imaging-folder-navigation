@@ -40,7 +40,11 @@ export const cancelDownload = async (refId, zipKey) => {
     return response.data.data;
 };
 
-export const previewImage = async (key) => {
-    const response = await axios.get(`${API_BASE_URL}/image/preview`, { params: { key } });
-    return response.data.data;
+export const previewImage = async (downsampledFileKey) => {
+    const response = await axios.get(`https://3f2bkpjjxc.execute-api.us-east-1.amazonaws.com/plc/get-downsampled-image/${downsampledFileKey}`,
+        {
+            responseType: 'blob' // Ensures the response is treated as a binary Blob
+        }
+    );
+    return await response.data;
 };

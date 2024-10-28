@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { getFileList, getFolderPreview, downloadFile, getDownloadStatus, cancelDownload, downloadFolder } from '../services/apiService';
+import { getFileList, getFolderPreview, downloadFile, getDownloadStatus, cancelDownload, downloadFolder, previewImage } from '../services/apiService';
 import FolderPreview from './FolderPreview';
-import { ArrowDownTrayIcon, PlusIcon, MinusIcon } from '@heroicons/react/24/solid';
+import { ArrowDownTrayIcon, PlusIcon, MinusIcon, EyeIcon } from '@heroicons/react/24/solid';
+import ImageModal from './ImageModal';
 
 const FileList = () => {
     const [folders, setFolders] = useState([]);
@@ -11,6 +12,10 @@ const FileList = () => {
     const [previewFolderName, setPreviewFolderName] = useState(null);
     const [folderDownloadStatus, setFolderDownloadStatus] = useState(null);
     const [downloadStatusLoading, setDownloadStatusLoading] = useState(false);
+
+    const [modalVisible, setModalVisible] = useState(false);
+    const [imageUrl, setImageUrl] = useState(null);
+    const [imagePreviewLoading, setImagePreviewLoading] = useState(false);
 
     useEffect(() => {
         const fetchFolders = async () => {
@@ -31,6 +36,16 @@ const FileList = () => {
 
         fetchFolders();
     }, []);
+
+    useEffect(() => {
+        if (folderDownloadStatus && (folderDownloadStatus.status === "COMPLETED" || folderDownloadStatus.status === "NOT_FOUND" || folderDownloadStatus.status === "NO_SUCH_UPLOAD")) {
+            setTimeout(() => setFolderDownloadStatus(null), 1000);
+        }
+        if (downloadStatus && (downloadStatus.status === "COMPLETED" || downloadStatus.status === "NOT_FOUND" || downloadStatus.status === "NO_SUCH_UPLOAD")) {
+            setTimeout(() => setDownloadStatus(null), 1000);
+        }
+    }, [folderDownloadStatus, downloadStatus]);
+
 
     const toggleFolder = async (folder) => {
         if (folder.isOpen) {
@@ -88,10 +103,16 @@ const FileList = () => {
     };
 
     const handleDownloadStart = async (fileKey) => {
+        if (downloadStatus || folderDownloadStatus) {
+            alert("Another download is in progress");
+            return;
+        }
         try {
             fileKey = formatFolderName(fileKey);
-            const downloadData = await downloadFile(fileKey, false);
+            setDownloadStatus({ ...downloadStatus, status: 'PENDING' });
 
+            const downloadData = await downloadFile(fileKey, false);
+            setDownloadStatus({ refId: downloadData.ref, status: 'PENDING' });
             const blob = new Blob([downloadData], { type: 'application/octet-stream' });
             const url = window.URL.createObjectURL(blob);
 
@@ -131,6 +152,10 @@ const FileList = () => {
     };
 
     const handleFolderDownload = async (folder) => {
+        if (folderDownloadStatus || downloadStatus) {
+            alert("Another download is in progress");
+            return;
+        }
         try {
             const zipFileName = `${formatFolderName(folder.name)}.zip`;
             const response = await downloadFolder(folder.name, [], zipFileName);
@@ -145,7 +170,7 @@ const FileList = () => {
         try {
             const statusData = await getDownloadStatus(refId);
             setFolderDownloadStatus({ ...folderDownloadStatus, status: statusData.status });
-            if (statusData.status === 'completed') {
+            if (statusData.status === 'COMPLETED') {
                 const downloadLink = document.createElement('a');
                 downloadLink.href = statusData.url;
                 downloadLink.download = `${folderDownloadStatus.refId}.zip`;
@@ -161,6 +186,33 @@ const FileList = () => {
     const formatFolderName = (folderPath) => {
         const pathParts = folderPath.split('/').filter(Boolean);
         return pathParts[pathParts.length - 1];
+    };
+
+    const handlePreviewImage = (file) => {
+        setImagePreviewLoading(true);
+        setModalVisible(true);
+        handleFetchPreviewImage(file);
+    }
+
+    const handleFetchPreviewImage = async (file) => {
+        const baseFileName = file.split('/').pop().replace('.tif', '');
+        const downsampledFileKey = `${file.substring(0, file.lastIndexOf('/'))}/downsampled/downsampled-${baseFileName}.tif`;
+    
+        try {
+            const pngData = await previewImage(downsampledFileKey);
+            const url = URL.createObjectURL(pngData);
+            setImageUrl(url);
+            setImagePreviewLoading(false);
+        } catch (error) {
+            console.error("Error fetching preview image:", error);
+        }
+    };
+    
+
+    const closeModal = () => {
+        setModalVisible(false);
+        setImageUrl(''); 
+        URL.revokeObjectURL(imageUrl); 
     };
 
     const renderFolders = (folders) => (
@@ -210,14 +262,26 @@ const FileList = () => {
                             <ul>
                                 {folder.files.map((file) => (
                                     <li key={file} className="py-2 flex justify-between items-center">
-                                        <span>{file}</span>
-                                        <button
-                                            onClick={() => handleDownloadStart(file)}
-                                            className="flex items-center bg-teal-500 px-2 h-7 py-1 text-white rounded-md hover:bg-teal-600 hover:shadow-lg transition duration-150 ease-in-out"
-                                        >
-                                            <ArrowDownTrayIcon className="h-5 w-5 text-white font-bold mr-2" />
-                                            Download
-                                        </button>
+                                        <span>{formatFolderName(file)}</span>
+                                        <div className="flex items-center">
+                                            <button
+                                                onClick={() => handlePreviewImage(file)}
+                                                className="text-teal-500 font-semibold flex items-center mr-2 border border-teal-500 px-2 py-1 rounded-md"
+                                            >
+                                                <>
+                                                    <EyeIcon className="h-4 w-4 mr-1" />
+                                                    Preview Image
+                                                </>
+                                            </button>
+                                            <button
+                                                onClick={() => handleDownloadStart(file)}
+                                                className="flex items-center bg-teal-500 px-2 h-7 py-1 text-white rounded-md hover:bg-teal-600 hover:shadow-lg transition duration-150 ease-in-out"
+                                            >
+                                                <ArrowDownTrayIcon className="h-5 w-5 text-white font-bold mr-2" />
+                                                Download
+                                            </button>
+                                        </div>
+
                                     </li>
                                 ))}
                             </ul>
@@ -236,7 +300,6 @@ const FileList = () => {
     return (
         <div className="p-4">
             <h2 className="text-xl font-bold">Folders</h2>
-            {renderFolders(folders)}
 
             {folderDownloadStatus && (
                 <div className="mt-6">
@@ -265,9 +328,13 @@ const FileList = () => {
                 <div className="mt-6">
                     <h4 className="text-lg font-semibold">Download Status</h4>
                     <p>Status: {downloadStatus.status}</p>
-                    <button onClick={() => handleDownloadStatusCheck(downloadStatus.downloadId)} className="text-teal-500">Refresh Status</button>
-                    <button onClick={() => handleCancelDownload(downloadStatus.downloadId)} className="text-red-500 ml-4">Cancel Download</button>
+                    <button onClick={() => handleDownloadStatusCheck(downloadStatus.refId)} className="text-teal-500">Refresh Status</button>
+                    <button onClick={() => handleCancelDownload(downloadStatus.refId)} className="text-red-500 ml-4">Cancel Download</button>
                 </div>
+            )}
+            {renderFolders(folders)}
+            {modalVisible && (
+                <ImageModal imageUrl={imageUrl} onClose={closeModal} loading={imagePreviewLoading} />
             )}
         </div>
     );
