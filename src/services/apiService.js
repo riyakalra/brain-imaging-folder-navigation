@@ -36,14 +36,23 @@ export const getDownloadStatus = async (downloadId) => {
 };
 
 export const cancelDownload = async (refId, zipKey) => {
-    const response = await axios.delete(`${API_BASE_URL}/download/cancel`, { params: { refId, zipKey } });
-    return response.data.data;
+    const response = await axios.delete(`${API_BASE_URL}/download/cancel`, {
+        headers: {
+            'Content-Type': 'application/json',
+            'accept': 'application/json',
+        },
+        data: { 
+            refId,
+            zipKey
+        }
+    });
+    return response.data;
 };
 
 export const previewImage = async (downsampledFileKey) => {
     const response = await axios.get(`https://3f2bkpjjxc.execute-api.us-east-1.amazonaws.com/plc/get-downsampled-image/${downsampledFileKey}`,
         {
-            responseType: 'blob' // Ensures the response is treated as a binary Blob
+            responseType: 'blob' 
         }
     );
     return await response.data;

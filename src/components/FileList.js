@@ -108,17 +108,17 @@ const FileList = () => {
             return;
         }
         try {
-            fileKey = formatFolderName(fileKey);
-            setDownloadStatus({ ...downloadStatus, status: 'PENDING' });
-
-            const downloadData = await downloadFile(fileKey, false);
-            setDownloadStatus({ refId: downloadData.ref, status: 'PENDING' });
+            const fileName = formatFolderName(fileKey).split('.').slice(0, -1).join('.');
+            const zipFileName =  `${fileName}.zip`
+        
+            const downloadData = await downloadFile(zipFileName, true);
+          
             const blob = new Blob([downloadData], { type: 'application/octet-stream' });
             const url = window.URL.createObjectURL(blob);
 
             const link = document.createElement('a');
             link.href = url;
-            link.download = fileKey.split('/').pop();
+            link.download = zipFileName;
             document.body.appendChild(link);
             link.click();
             link.remove();
@@ -129,37 +129,39 @@ const FileList = () => {
         }
     };
 
-    const handleDownloadStatusCheck = async (downloadId) => {
-        try {
-            const status = await getDownloadStatus(downloadId);
-            setDownloadStatus(status);
-        } catch (error) {
-            console.error("Error checking download status:", error);
-        }
-    };
 
-    const handleCancelDownload = async (downloadId) => {
+    const handleCancelDownload = async (downloadId, zipKey) => {
         const confirmCancel = window.confirm("Are you sure you want to cancel the download?");
         if (!confirmCancel) return;
 
         try {
             setFolderDownloadStatus(null);
             setDownloadStatus(null);
-            await cancelDownload(downloadId);
+            await cancelDownload(downloadId, zipKey);
         } catch (error) {
             console.error("Error canceling download:", error);
         }
     };
 
     const handleFolderDownload = async (folder) => {
-        if (folderDownloadStatus || downloadStatus) {
-            alert("Another download is in progress");
-            return;
-        }
         try {
             const zipFileName = `${formatFolderName(folder.name)}.zip`;
+            
             const response = await downloadFolder(folder.name, [], zipFileName);
-            setFolderDownloadStatus({ refId: response.ref, status: 'PENDING', zipKey: response.zipFileName });
+          
+            if (response.url) {
+                const link = document.createElement('a');
+                link.href = response.url;
+                link.download = zipFileName;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+            }
+            if(response.ref) {
+                const status = await getDownloadStatus(response.ref);
+                setFolderDownloadStatus({ refId: response.ref, status: 'PENDING', zipKey: status.key });
+            }
+        
         } catch (error) {
             console.error("Error starting folder download:", error);
         }
@@ -314,7 +316,7 @@ const FileList = () => {
                                 Refresh Status
                             </button>
                             <button
-                                onClick={() => handleCancelDownload(folderDownloadStatus.refId)}
+                                onClick={() => handleCancelDownload(folderDownloadStatus.refId, folderDownloadStatus.zipKey)}
                                 className="text-red-500 ml-4 p-1 border border-red-500 rounded-md"
                             >
                                 Cancel Download
@@ -324,14 +326,6 @@ const FileList = () => {
                 </div>
             )}
 
-            {downloadStatus && (
-                <div className="mt-6">
-                    <h4 className="text-lg font-semibold">Download Status</h4>
-                    <p>Status: {downloadStatus.status}</p>
-                    <button onClick={() => handleDownloadStatusCheck(downloadStatus.refId)} className="text-teal-500">Refresh Status</button>
-                    <button onClick={() => handleCancelDownload(downloadStatus.refId)} className="text-red-500 ml-4">Cancel Download</button>
-                </div>
-            )}
             {renderFolders(folders)}
             {modalVisible && (
                 <ImageModal imageUrl={imageUrl} onClose={closeModal} loading={imagePreviewLoading} />
