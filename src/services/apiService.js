@@ -13,8 +13,8 @@ export const getFolderPreview = async (key, pageToken = '') => {
     return response.data;
 };
 
-export const downloadFile = async (key, isZip) => {
-    const response = await axios.get(`${API_BASE_URL}/download/url`, { params: { key, isZip } });
+export const downloadFile = async (key) => {
+    const response = await axios.get(`${API_BASE_URL}/download/url`, { params: { key } });
     return response.data.data;
 };
 

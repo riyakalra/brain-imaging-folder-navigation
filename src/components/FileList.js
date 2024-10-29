@@ -109,16 +109,15 @@ const FileList = () => {
         }
         try {
             const fileName = formatFolderName(fileKey).split('.').slice(0, -1).join('.');
-            const zipFileName =  `${fileName}.zip`
         
-            const downloadData = await downloadFile(zipFileName, true);
+            const downloadData = await downloadFile(fileKey);
           
             const blob = new Blob([downloadData], { type: 'application/octet-stream' });
             const url = window.URL.createObjectURL(blob);
 
             const link = document.createElement('a');
             link.href = url;
-            link.download = zipFileName;
+            link.download = fileName;
             document.body.appendChild(link);
             link.click();
             link.remove();
