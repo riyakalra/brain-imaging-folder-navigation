@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { getFolderPreview } from '../services/apiService';
+import React from 'react';
 
 const FolderPreview = ({ data, previewDataLoading }) => {
 
