@@ -108,8 +108,8 @@ const FileList = () => {
             return;
         }
         try {
-            const fileName = formatFolderName(fileKey).split('.').slice(0, -1).join('.');
-        
+            const fileName = formatFolderName(fileKey);
+    
             const downloadData = await downloadFile(fileKey);
           
             const blob = new Blob([downloadData], { type: 'application/octet-stream' });
